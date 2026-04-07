@@ -21,6 +21,7 @@ import NetWorthPage from "./pages/NetWorthPage";
 import ImportExportPage from "./pages/ImportExportPage";
 import PreferencesPage from "./pages/PreferencesPage";
 import BankSyncPage from "./pages/BankSyncPage";
+import SimulatorPage from "./pages/SimulatorPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="import-export" element={<ImportExportPage />} />
               <Route path="preferences" element={<PreferencesPage />} />
               <Route path="bank-sync" element={<BankSyncPage />} />
+              <Route path="simulator" element={<SimulatorPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

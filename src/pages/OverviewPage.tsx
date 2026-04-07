@@ -1,6 +1,7 @@
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, HeartPulse, Flame, ShieldCheck, Leaf } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 import { mockTransactions, mockAccounts, mockBudgets, balanceTrend, last7DaysSpending, expenseByCategory } from "@/lib/mock-data";
+import { calculateFinancialHealthScore, calculateStreaks, calculateSafeToSpend, calculateCarbonFootprint } from "@/lib/scoring";
 
 const totalBalance = mockAccounts.filter(a => a.active).reduce((s, a) => s + a.balance, 0);
 const income = mockTransactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
@@ -15,9 +16,62 @@ const summaryCards = [
 const fmt = (n: number) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function OverviewPage() {
+  const healthScore = calculateFinancialHealthScore();
+  const streaks = calculateStreaks();
+  const safeToSpend = calculateSafeToSpend();
+  const carbonFootprint = calculateCarbonFootprint();
+
   return (
     <div className="space-y-6 animate-fade-in">
       <h1 className="text-2xl font-bold text-foreground">Dashboard Overview</h1>
+
+      {/* Gamification & Health Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Safe to Spend */}
+        <div className="bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/20 p-5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-foreground opacity-90">Safe-to-Spend Today</span>
+            <ShieldCheck className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <div className="text-3xl font-bold text-primary">${safeToSpend}</div>
+            <div className="text-xs text-muted-foreground mt-1">Based on remaining budget</div>
+          </div>
+        </div>
+
+        {/* Health Score */}
+        <div className="bg-card rounded-xl card-shadow p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-card-foreground">Health Score</span>
+            <HeartPulse className={`w-5 h-5 ${healthScore.color}`} />
+          </div>
+          <div>
+            <div className="text-3xl font-bold flex items-baseline gap-2">
+              <span>{healthScore.score}</span>
+              <span className={`text-sm ${healthScore.color} font-medium`}>{healthScore.label}</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">out of 850 potential</div>
+          </div>
+        </div>
+
+        {/* Streaks */}
+        <div className="bg-card rounded-xl card-shadow p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-card-foreground">Active Streaks</span>
+            <Flame className="w-5 h-5 text-orange-500" />
+          </div>
+          <div className="space-y-3 mt-1">
+            <div className="flex justify-between items-center text-sm border-b border-border pb-2">
+              <span className="text-muted-foreground">Under Budget</span>
+              <span className="font-bold flex items-center gap-1 text-card-foreground"><Flame className="w-3 h-3 text-orange-500 fill-orange-500" /> {streaks.budgetStreak} mo</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Positive Savings</span>
+              <span className="font-bold flex items-center gap-1 text-card-foreground"><Flame className="w-3 h-3 text-orange-500 fill-orange-500" /> {streaks.savingsStreak} mo</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -34,6 +88,30 @@ export default function OverviewPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Carbon Tracker Row */}
+      <div className="bg-card rounded-xl card-shadow p-5 border border-green-500/20 bg-green-500/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+              <Leaf className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-card-foreground">Carbon Footprint Tracker</h3>
+              <p className="text-xs text-muted-foreground">Estimated monthly CO₂ emissions based on your spending categories</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end w-full sm:w-auto">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-green-600 dark:text-green-400">{Math.round(carbonFootprint)}</span>
+              <span className="text-sm font-medium text-muted-foreground">kg CO₂e</span>
+            </div>
+            <div className="w-full sm:w-48 bg-muted rounded-full h-1.5 mt-1 relative overflow-hidden">
+              <div className="bg-green-500 h-1.5 rounded-full absolute left-0 top-0 transition-all" style={{ width: '45%' }} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts Row */}

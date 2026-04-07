@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ArrowLeftRight, Clock, Landmark, CreditCard,
   PieChart, TrendingDown, BarChart3, Calendar, DollarSign,
-  Upload, Settings, Link2, ChevronLeft, ChevronRight
+  Upload, Settings, Link2, ChevronLeft, ChevronRight, Calculator
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -21,6 +21,7 @@ const navItems = [
   { title: "Import / Export", url: "/dashboard/import-export", icon: Upload },
   { title: "Preferences", url: "/dashboard/preferences", icon: Settings },
   { title: "Bank Sync", url: "/dashboard/bank-sync", icon: Link2 },
+  { title: "AI Simulator", url: "/dashboard/simulator", icon: Calculator },
 ];
 
 export function AppSidebar() {
