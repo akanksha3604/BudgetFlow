@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { mockTransactions, categoryIcons, Transaction } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { categoryIcons, Transaction } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,42 +7,124 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Trash2, ShieldAlert, Lock, Unlock, Eye } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Trash2, ShieldAlert, Lock, Unlock, Eye, Sparkles, Camera } from "lucide-react";
 
 const fmt = (n: number) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2 });
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ amount: "", category: "", account: "", date: "", notes: "", type: "expense" as "income" | "expense" });
+  
+  // Magic Add State
+  const [activeTab, setActiveTab] = useState("magic");
+  const [magicInput, setMagicInput] = useState("");
+  const [isParsing, setIsParsing] = useState(false);
 
   // Cooling off drawer state
   const [coolingItems, setCoolingItems] = useState([
-    { id: 1, name: "New iPad", amount: 799, timestamp: Date.now() - (40 * 60 * 60 * 1000) }, // 40 hours ago
-    { id: 2, name: "Fancy jacket", amount: 150, timestamp: Date.now() - (2 * 60 * 60 * 1000) }, // 2 hours ago
+    { id: 1, name: "New iPad", amount: 799, timestamp: Date.now() - (40 * 60 * 60 * 1000) },
+    { id: 2, name: "Fancy jacket", amount: 150, timestamp: Date.now() - (2 * 60 * 60 * 1000) },
   ]);
   const [coolName, setCoolName] = useState("");
   const [coolAmount, setCoolAmount] = useState("");
 
+  const API_URL = "http://localhost:5000/api/transactions";
+
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      setTransactions(data);
+    } catch (err) {
+      console.error("Failed to fetch transactions", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
   const categories = [...new Set(transactions.map(t => t.category))];
   const filtered = transactions.filter(t => {
-    if (search && !t.category.toLowerCase().includes(search.toLowerCase()) && !t.notes.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !t.category.toLowerCase().includes(search.toLowerCase()) && !(t.notes || "").toLowerCase().includes(search.toLowerCase())) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterType !== "all" && t.type !== filterType) return false;
     return true;
   });
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.amount || !form.category) return;
-    setTransactions(prev => [{ id: Date.now().toString(), ...form, amount: parseFloat(form.amount) }, ...prev]);
-    setForm({ amount: "", category: "", account: "", date: "", notes: "", type: "expense" });
-    setDialogOpen(false);
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, amount: parseFloat(form.amount) })
+      });
+      if (res.ok) {
+        setForm({ amount: "", category: "", account: "", date: "", notes: "", type: "expense" });
+        setDialogOpen(false);
+        setActiveTab("magic");
+        fetchTransactions(); // Refresh data
+      }
+    } catch (err) {
+      console.error("Error creating transaction", err);
+    }
   };
 
-  const handleDelete = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
+  const handleMagicParse = () => {
+    if (!magicInput) return;
+    setIsParsing(true);
+    setTimeout(() => {
+      const lower = magicInput.toLowerCase();
+      let amountMatch = magicInput.match(/\$(\d+(\.\d{1,2})?)/);
+      let amount = amountMatch ? amountMatch[1] : "";
+      if (!amount) {
+         let fallbackMatch = magicInput.match(/(\d+(\.\d{1,2})?)/);
+         if (fallbackMatch) amount = fallbackMatch[1];
+      }
+      
+      let category = "Miscellaneous";
+      if (lower.includes("starbucks") || lower.includes("coffee") || lower.includes("lunch") || lower.includes("dinner")) category = "Food & Dining";
+      if (lower.includes("joe") || lower.includes("target") || lower.includes("walmart") || lower.includes("grocery") || lower.includes("whole")) category = "Groceries";
+      if (lower.includes("gas") || lower.includes("chevron") || lower.includes("uber") || lower.includes("lyft")) category = "Transport";
+      if (lower.includes("movie") || lower.includes("spotify") || lower.includes("netflix") || lower.includes("game")) category = "Entertainment";
+
+      setForm({ ...form, amount, category, notes: magicInput, date: new Date().toISOString().split('T')[0], type: "expense" });
+      setMagicInput("");
+      setIsParsing(false);
+      setActiveTab("manual");
+    }, 1000);
+  };
+
+  const handleSimulateScan = () => {
+    // Simulating an OCR scan of a Trader Joe's receipt
+    setIsParsing(true);
+    setMagicInput("Parsed from receipt: $85.50 at Trader Joe's");
+    setTimeout(() => {
+      setForm({ ...form, amount: "85.50", category: "Groceries", account: "Chase Checking", notes: "Trader Joe's Receipt", date: new Date().toISOString().split('T')[0], type: "expense" });
+      setMagicInput("");
+      setIsParsing(false);
+      setActiveTab("manual");
+    }, 1500);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setTransactions(prev => prev.filter(t => t._id !== id && t.id !== id));
+      }
+    } catch (err) {
+      console.error("Error deleting", err);
+    }
+  };
 
   const addCoolingItem = () => {
     if (!coolName || !coolAmount) return;
@@ -64,24 +146,51 @@ export default function TransactionsPage() {
           <DialogTrigger asChild>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="w-4 h-4 mr-2" /> Add Transaction</Button>
           </DialogTrigger>
-          <DialogContent className="bg-card">
+          <DialogContent className="bg-card sm:max-w-[425px]">
             <DialogHeader><DialogTitle className="text-card-foreground">New Transaction</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="mt-1" /></div>
-                <div><Label>Type</Label>
-                  <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as "income" | "expense" })}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent>
-                  </Select>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="magic" className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Magic Add</TabsTrigger>
+                <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="magic" className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Describe your purchase naturally</Label>
+                  <Input 
+                    placeholder="e.g. Spent $14 at Starbucks for morning coffee" 
+                    value={magicInput} 
+                    onChange={e => setMagicInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleMagicParse()}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">The AI Co-Pilot will automatically extract the amount, category, and notes.</p>
                 </div>
-              </div>
-              <div><Label>Category</Label><Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="e.g. Groceries" className="mt-1" /></div>
-              <div><Label>Account</Label><Input value={form.account} onChange={e => setForm({ ...form, account: e.target.value })} placeholder="e.g. Chase Checking" className="mt-1" /></div>
-              <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="mt-1" /></div>
-              <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" className="mt-1" /></div>
-              <Button onClick={handleAdd} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">Add Transaction</Button>
-            </div>
+                <div className="bg-muted h-[1px] w-full my-2" />
+                <Button variant="outline" onClick={handleSimulateScan} disabled={isParsing} className="w-full text-foreground/80 flex gap-2 border-dashed">
+                   <Camera className="w-4 h-4"/> {isParsing ? "Scanning Receipt Vision..." : "Scan physical receipt (AI Vision)"}
+                </Button>
+                <Button onClick={handleMagicParse} disabled={isParsing} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
+                  {isParsing ? "Processing..." : "Process Text with AI"}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="manual" className="space-y-3 pt-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="mt-1" /></div>
+                  <div><Label>Type</Label>
+                    <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as "income" | "expense" })}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="income">Income</SelectItem><SelectItem value="expense">Expense</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div><Label>Category</Label><Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="e.g. Groceries" className="mt-1" /></div>
+                <div><Label>Account</Label><Input value={form.account} onChange={e => setForm({ ...form, account: e.target.value })} placeholder="e.g. Chase Checking" className="mt-1" /></div>
+                <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="mt-1" /></div>
+                <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" className="mt-1" /></div>
+                <Button onClick={handleAdd} className="w-full bg-success text-success-foreground hover:bg-success/90">Save Transaction</Button>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
@@ -110,29 +219,37 @@ export default function TransactionsPage() {
           </div>
 
           {/* List */}
-          <div className="bg-card rounded-xl card-shadow divide-y divide-border">
-            {filtered.map(t => (
-              <div key={t.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${t.type === "income" ? "bg-success/10" : "bg-destructive/10"}`}>
-                    {categoryIcons[t.category] || (t.type === "income" ? <ArrowUpRight className="w-5 h-5 text-success" /> : <ArrowDownRight className="w-5 h-5 text-destructive" />)}
+          <div className="bg-card rounded-xl card-shadow divide-y divide-border min-h-[200px]">
+            {isLoading ? (
+               <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center gap-3">
+                 <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                 Loading transactions from MongoDB...
+               </div>
+            ) : filtered.length === 0 ? (
+               <div className="p-8 text-center text-muted-foreground">No transactions found</div>
+            ) : (
+              filtered.map(t => (
+                <div key={t._id || t.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${t.type === "income" ? "bg-success/10" : "bg-destructive/10"}`}>
+                      {categoryIcons[t.category] || (t.type === "income" ? <ArrowUpRight className="w-5 h-5 text-success" /> : <ArrowDownRight className="w-5 h-5 text-destructive" />)}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-card-foreground">{t.category}</div>
+                      <div className="text-xs text-muted-foreground">{t.account} · {t.date} {t.notes && `· ${t.notes}`}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-card-foreground">{t.category}</div>
-                    <div className="text-xs text-muted-foreground">{t.account} · {t.date} {t.notes && `· ${t.notes}`}</div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                      {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                    </span>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => handleDelete(t._id || t.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-destructive"}`}>
-                    {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
-                  </span>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => handleDelete(t.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {filtered.length === 0 && <div className="p-8 text-center text-muted-foreground">No transactions found</div>}
+              ))
+            )}
           </div>
         </TabsContent>
 

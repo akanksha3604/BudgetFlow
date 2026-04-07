@@ -1,7 +1,8 @@
 import { mockBudgets } from "@/lib/mock-data";
 import { categoryIcons } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles, TrendingDown, TriangleAlert } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const fmt = (n: number) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2 });
 
@@ -11,6 +12,33 @@ export default function BudgetsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Budgets</h1>
         <Button className="bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="w-4 h-4 mr-2" /> New Budget</Button>
+      </div>
+
+      {/* AI Anomaly & Re-balancer Panel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Anomaly Alert */}
+        <Alert className="bg-destructive/10 border-destructive/20 text-destructive relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
+          <TriangleAlert className="h-5 w-5 !text-destructive" />
+          <AlertTitle className="font-semibold">Anomaly Detected</AlertTitle>
+          <AlertDescription className="text-destructive/90 text-sm mt-1">
+            You are spending $45/day in <strong>Food & Dining</strong>. At this velocity, you will overdraw your checking account before your next Paycheck on the 15th.
+          </AlertDescription>
+        </Alert>
+
+        {/* Re-balancer Suggestion */}
+        <Alert className="bg-primary/5 border-primary/20 text-primary relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+          <Sparkles className="h-5 w-5 !text-primary" />
+          <AlertTitle className="font-semibold text-foreground">Smart Re-balancer</AlertTitle>
+          <AlertDescription className="text-muted-foreground text-sm mt-1">
+            You consistently underspend your <span className="font-medium text-foreground">Entertainment</span> budget by $60. 
+            Want to seamlessly re-allocate this to <span className="font-medium text-foreground">Groceries</span> where you typically overspend?
+            <Button variant="outline" size="sm" className="mt-3 w-full bg-background">
+              Auto-Rebalance Now
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

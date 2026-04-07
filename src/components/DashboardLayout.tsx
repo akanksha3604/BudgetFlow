@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { TopNavbar } from "./TopNavbar";
+import { AICoPilot } from "./AICoPilot";
 
 export function DashboardLayout() {
   return (
@@ -12,6 +13,7 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+      <AICoPilot />
     </div>
   );
 }
